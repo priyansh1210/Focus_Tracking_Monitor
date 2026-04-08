@@ -59,105 +59,218 @@ st.set_page_config(
     initial_sidebar_state="expanded",
 )
 
-# ---- Custom CSS ----
+# ---- Custom CSS (Material Dashboard Light Theme) ----
 st.markdown("""
 <style>
+    /* Import Google Font */
+    @import url('https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700&display=swap');
+
     /* Main background */
     .stApp {
-        background-color: #0e1117;
+        background-color: #f0f2f5;
+        font-family: 'Roboto', sans-serif;
     }
 
-    /* Metric cards */
+    /* Metric cards — white with shadow, green icon style */
     div[data-testid="stMetric"] {
-        background: linear-gradient(135deg, #1a1f2e 0%, #151922 100%);
-        border: 1px solid #2d3548;
+        background: #ffffff;
+        border: none;
         border-radius: 12px;
         padding: 16px 20px;
-        box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+        box-shadow: 0 2px 12px rgba(0,0,0,0.08);
+        transition: box-shadow 0.3s ease;
+    }
+    div[data-testid="stMetric"]:hover {
+        box-shadow: 0 4px 20px rgba(0,0,0,0.12);
     }
     div[data-testid="stMetric"] label {
-        color: #8b95a5 !important;
-        font-size: 0.85rem !important;
+        color: #7b809a !important;
+        font-size: 0.8rem !important;
         font-weight: 500 !important;
         text-transform: uppercase;
         letter-spacing: 0.5px;
+        font-family: 'Roboto', sans-serif !important;
     }
     div[data-testid="stMetric"] [data-testid="stMetricValue"] {
-        color: #e2e8f0 !important;
+        color: #344767 !important;
         font-size: 1.4rem !important;
         font-weight: 700 !important;
         white-space: nowrap !important;
         overflow: visible !important;
         text-overflow: unset !important;
+        font-family: 'Roboto', sans-serif !important;
+    }
+    div[data-testid="stMetric"] [data-testid="stMetricDelta"] {
+        color: #4caf50 !important;
+        font-size: 0.8rem !important;
     }
 
-    /* Sidebar */
+    /* Sidebar — dark gradient like Material Dashboard */
     section[data-testid="stSidebar"] {
-        background: linear-gradient(180deg, #111827 0%, #0f172a 100%);
-        border-right: 1px solid #1e293b;
+        background: linear-gradient(195deg, #42424a 0%, #191919 100%);
+        border-right: none;
+    }
+    section[data-testid="stSidebar"] * {
+        color: #ffffff !important;
+    }
+    section[data-testid="stSidebar"] .stRadio label {
+        color: rgba(255,255,255,0.8) !important;
+        font-weight: 400 !important;
+    }
+    section[data-testid="stSidebar"] .stRadio label:hover {
+        color: #ffffff !important;
+    }
+    section[data-testid="stSidebar"] hr {
+        border-color: rgba(255,255,255,0.15) !important;
     }
 
     /* Headers */
-    h1, h2, h3 {
-        color: #e2e8f0 !important;
+    h1 {
+        color: #344767 !important;
         font-weight: 700 !important;
+        font-family: 'Roboto', sans-serif !important;
+        font-size: 1.8rem !important;
+    }
+    h2, h3 {
+        color: #344767 !important;
+        font-weight: 600 !important;
+        font-family: 'Roboto', sans-serif !important;
+    }
+
+    /* Body text */
+    p, span, div {
+        font-family: 'Roboto', sans-serif;
+    }
+    .stMarkdown p {
+        color: #344767;
     }
 
     /* Dividers */
     hr {
-        border-color: #1e293b !important;
+        border-color: #e9ecef !important;
     }
 
     /* Alert cards */
     .alert-card {
-        background: linear-gradient(135deg, #1e1215 0%, #1a0f12 100%);
-        border: 1px solid #7f1d1d;
-        border-left: 4px solid #ef4444;
+        background: #ffffff;
+        border: none;
+        border-left: 4px solid #f44335;
         border-radius: 8px;
-        padding: 12px 16px;
-        margin: 6px 0;
+        padding: 14px 18px;
+        margin: 8px 0;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+        color: #344767;
     }
     .alert-card-warning {
-        background: linear-gradient(135deg, #1e1a0f 0%, #1a170d 100%);
-        border: 1px solid #78350f;
-        border-left: 4px solid #f59e0b;
+        background: #ffffff;
+        border: none;
+        border-left: 4px solid #fb8c00;
         border-radius: 8px;
-        padding: 12px 16px;
-        margin: 6px 0;
+        padding: 14px 18px;
+        margin: 8px 0;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+        color: #344767;
     }
 
     /* Student card */
     .student-card {
-        background: linear-gradient(135deg, #1a1f2e 0%, #151922 100%);
-        border: 1px solid #2d3548;
-        border-radius: 10px;
-        padding: 16px;
-        margin: 8px 0;
+        background: #ffffff;
+        border: none;
+        border-radius: 12px;
+        padding: 18px;
+        margin: 10px 0;
+        box-shadow: 0 2px 12px rgba(0,0,0,0.08);
     }
 
     /* Status badges */
-    .badge-focused { color: #22c55e; font-weight: 700; }
-    .badge-distracted { color: #f97316; font-weight: 700; }
-    .badge-confused { color: #3b82f6; font-weight: 700; }
-    .badge-bored { color: #a855f7; font-weight: 700; }
+    .badge-focused { color: #4caf50; font-weight: 700; }
+    .badge-distracted { color: #fb8c00; font-weight: 700; }
+    .badge-confused { color: #1a73e8; font-weight: 700; }
+    .badge-bored { color: #7b1fa2; font-weight: 700; }
+
+    /* Progress bars — green like Material */
+    .stProgress > div > div > div {
+        background: linear-gradient(195deg, #66bb6a, #43a047) !important;
+        border-radius: 4px;
+    }
+    .stProgress > div > div {
+        background-color: #e9ecef !important;
+        border-radius: 4px;
+    }
+
+    /* Buttons */
+    .stButton > button {
+        background: linear-gradient(195deg, #42424a, #191919);
+        color: white;
+        border: none;
+        border-radius: 8px;
+        font-weight: 500;
+        padding: 8px 24px;
+        font-family: 'Roboto', sans-serif;
+        transition: box-shadow 0.3s ease;
+    }
+    .stButton > button:hover {
+        box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+    }
+    .stButton > button[kind="primary"] {
+        background: linear-gradient(195deg, #66bb6a, #43a047);
+    }
+
+    /* Selectbox, text input */
+    .stSelectbox, .stTextInput {
+        font-family: 'Roboto', sans-serif;
+    }
+    .stTextInput input, .stSelectbox > div > div {
+        border-radius: 8px !important;
+        border-color: #d2d6da !important;
+        color: #344767 !important;
+    }
+
+    /* Tabs */
+    .stTabs [data-baseweb="tab"] {
+        color: #7b809a;
+        font-weight: 500;
+        font-family: 'Roboto', sans-serif;
+    }
+    .stTabs [aria-selected="true"] {
+        color: #344767 !important;
+        border-bottom-color: #4caf50 !important;
+    }
+
+    /* Dataframe */
+    .stDataFrame {
+        border-radius: 12px;
+        overflow: hidden;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+    }
+
+    /* Expander */
+    .streamlit-expanderHeader {
+        background: #ffffff !important;
+        border-radius: 8px !important;
+        color: #344767 !important;
+        font-weight: 500 !important;
+    }
+
+    /* Container/card effect for content blocks */
+    div[data-testid="stVerticalBlock"] > div[data-testid="stVerticalBlockBorderWrapper"] {
+        background: #ffffff;
+        border-radius: 12px;
+        box-shadow: 0 2px 12px rgba(0,0,0,0.08);
+        padding: 8px;
+    }
 
     /* Hide default streamlit branding */
     #MainMenu {visibility: hidden;}
     footer {visibility: hidden;}
-
-    /* Dataframe styling */
-    .stDataFrame {
-        border-radius: 8px;
-        overflow: hidden;
-    }
 </style>
 """, unsafe_allow_html=True)
 
 STATE_COLORS = {
-    "focused": "#22c55e",
-    "distracted": "#f97316",
-    "confused": "#3b82f6",
-    "bored": "#a855f7",
+    "focused": "#4caf50",
+    "distracted": "#fb8c00",
+    "confused": "#1a73e8",
+    "bored": "#7b1fa2",
 }
 STATE_EMOJIS = {
     "focused": "🟢",
@@ -165,6 +278,17 @@ STATE_EMOJIS = {
     "confused": "🔵",
     "bored": "🟣",
 }
+
+# Chart layout defaults for light theme
+CHART_LAYOUT = dict(
+    paper_bgcolor="rgba(0,0,0,0)",
+    plot_bgcolor="rgba(0,0,0,0)",
+    font_color="#344767",
+    font_family="Roboto, sans-serif",
+    xaxis=dict(gridcolor="#e9ecef", linecolor="#e9ecef"),
+    yaxis=dict(gridcolor="#e9ecef", linecolor="#e9ecef"),
+    legend=dict(font=dict(color="#344767")),
+)
 
 
 # ---- Authentication ----
@@ -359,26 +483,23 @@ def overview_page():
                              color="State", color_discrete_map=STATE_COLORS, hole=0.45)
                 fig.update_layout(
                     height=350, margin=dict(t=20, b=20, l=20, r=20),
-                    paper_bgcolor="rgba(0,0,0,0)",
-                    plot_bgcolor="rgba(0,0,0,0)",
-                    font_color="#e2e8f0",
-                    legend=dict(font=dict(color="#e2e8f0")),
+                    **CHART_LAYOUT,
                 )
                 st.plotly_chart(fig, use_container_width=True)
 
         with col_right:
             st.markdown("### Focus Score Distribution")
             fig = px.histogram(snaps, x="focus_score", nbins=30,
-                               color_discrete_sequence=["#3b82f6"])
-            fig.add_vline(x=50, line_dash="dash", line_color="#ef4444",
+                               color_discrete_sequence=["#4caf50"])
+            fig.add_vline(x=50, line_dash="dash", line_color="#f44335",
                           annotation_text="Low Focus Threshold")
             fig.update_layout(
                 height=350, margin=dict(t=20, b=20, l=20, r=20),
                 paper_bgcolor="rgba(0,0,0,0)",
                 plot_bgcolor="rgba(0,0,0,0)",
-                font_color="#e2e8f0",
-                xaxis=dict(gridcolor="#1e293b"),
-                yaxis=dict(gridcolor="#1e293b"),
+                font_color="#344767",
+                xaxis=dict(gridcolor="#e9ecef"),
+                yaxis=dict(gridcolor="#e9ecef"),
             )
             st.plotly_chart(fig, use_container_width=True)
 
@@ -389,14 +510,14 @@ def overview_page():
                          color="predicted_state" if "predicted_state" in snaps.columns else None,
                          color_discrete_map=STATE_COLORS,
                          opacity=0.7, size_max=6)
-        fig.add_hline(y=50, line_dash="dash", line_color="#ef4444", opacity=0.5)
+        fig.add_hline(y=50, line_dash="dash", line_color="#f44335", opacity=0.5)
         fig.update_layout(
             height=350, margin=dict(t=20, b=20),
             paper_bgcolor="rgba(0,0,0,0)",
             plot_bgcolor="rgba(0,0,0,0)",
-            font_color="#e2e8f0",
-            xaxis=dict(gridcolor="#1e293b", title="Snapshot #"),
-            yaxis=dict(gridcolor="#1e293b", title="Focus Score"),
+            font_color="#344767",
+            xaxis=dict(gridcolor="#e9ecef", title="Snapshot #"),
+            yaxis=dict(gridcolor="#e9ecef", title="Focus Score"),
         )
         st.plotly_chart(fig, use_container_width=True)
 
@@ -526,17 +647,17 @@ def all_students_page():
     fig = px.bar(df_students.sort_values("Avg Focus", ascending=True),
                  x="Avg Focus", y="Username", orientation="h",
                  color="Avg Focus",
-                 color_continuous_scale=["#ef4444", "#f59e0b", "#22c55e"],
+                 color_continuous_scale=["#f44335", "#fb8c00", "#4caf50"],
                  range_color=[0, 100])
-    fig.add_vline(x=50, line_dash="dash", line_color="#ef4444", opacity=0.5)
+    fig.add_vline(x=50, line_dash="dash", line_color="#f44335", opacity=0.5)
     fig.update_layout(
         height=max(250, len(df_students) * 60),
         margin=dict(t=20, b=20),
         paper_bgcolor="rgba(0,0,0,0)",
         plot_bgcolor="rgba(0,0,0,0)",
-        font_color="#e2e8f0",
-        xaxis=dict(gridcolor="#1e293b", range=[0, 100]),
-        yaxis=dict(gridcolor="#1e293b"),
+        font_color="#344767",
+        xaxis=dict(gridcolor="#e9ecef", range=[0, 100]),
+        yaxis=dict(gridcolor="#e9ecef"),
     )
     st.plotly_chart(fig, use_container_width=True)
 
@@ -600,7 +721,7 @@ def student_deep_dive_page():
             fig.update_layout(
                 height=300, margin=dict(t=10, b=10),
                 paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)",
-                font_color="#e2e8f0",
+                font_color="#344767",
             )
             st.plotly_chart(fig, use_container_width=True)
 
@@ -610,8 +731,8 @@ def student_deep_dive_page():
         y_vals = student_df["focus_score"].values
         fig.add_trace(go.Scatter(
             y=y_vals, mode="lines+markers",
-            marker=dict(size=4, color="#3b82f6"),
-            line=dict(width=2, color="#3b82f6"),
+            marker=dict(size=4, color="#4caf50"),
+            line=dict(width=2, color="#4caf50"),
         ))
         # Rolling average
         if len(y_vals) > 5:
@@ -621,13 +742,13 @@ def student_deep_dive_page():
                 line=dict(width=3, color="#f59e0b", dash="dot"),
                 name="5-pt Average",
             ))
-        fig.add_hline(y=50, line_dash="dash", line_color="#ef4444", opacity=0.5)
+        fig.add_hline(y=50, line_dash="dash", line_color="#f44335", opacity=0.5)
         fig.update_layout(
             height=300, margin=dict(t=10, b=10),
             paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)",
-            font_color="#e2e8f0",
-            xaxis=dict(gridcolor="#1e293b", title="Snapshot"),
-            yaxis=dict(gridcolor="#1e293b", title="Focus Score"),
+            font_color="#344767",
+            xaxis=dict(gridcolor="#e9ecef", title="Snapshot"),
+            yaxis=dict(gridcolor="#e9ecef", title="Focus Score"),
         )
         st.plotly_chart(fig, use_container_width=True)
 
@@ -645,19 +766,19 @@ def student_deep_dive_page():
         fig = go.Figure()
         fig.add_trace(go.Scatterpolar(
             r=ratios, theta=available_feats, fill="toself",
-            name=f"Student {selected}", line_color="#3b82f6",
+            name=f"Student {selected}", line_color="#4caf50",
         ))
         fig.add_trace(go.Scatterpolar(
             r=[1] * len(available_feats), theta=available_feats, fill="toself",
-            name="Class Average", line_color="#64748b", opacity=0.3,
+            name="Class Average", line_color="#bdbdbd", opacity=0.3,
         ))
         fig.update_layout(
             height=400, margin=dict(t=30, b=30),
             paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)",
-            font_color="#e2e8f0",
+            font_color="#344767",
             polar=dict(
-                radialaxis=dict(visible=True, range=[0, 3], gridcolor="#1e293b"),
-                angularaxis=dict(gridcolor="#1e293b"),
+                radialaxis=dict(visible=True, range=[0, 3], gridcolor="#e9ecef"),
+                angularaxis=dict(gridcolor="#e9ecef"),
                 bgcolor="rgba(0,0,0,0)",
             ),
         )
@@ -669,12 +790,12 @@ def student_deep_dive_page():
                                   ["focus_score"] + [f for f in features if f in student_df.columns])
     if feature_choice in student_df.columns:
         fig = px.line(student_df.reset_index(), y=feature_choice,
-                      color_discrete_sequence=["#3b82f6"])
+                      color_discrete_sequence=["#4caf50"])
         fig.update_layout(
             height=300, margin=dict(t=20, b=20),
             paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)",
-            font_color="#e2e8f0",
-            xaxis=dict(gridcolor="#1e293b"), yaxis=dict(gridcolor="#1e293b"),
+            font_color="#344767",
+            xaxis=dict(gridcolor="#e9ecef"), yaxis=dict(gridcolor="#e9ecef"),
         )
         st.plotly_chart(fig, use_container_width=True)
 
@@ -725,10 +846,10 @@ def live_monitor_page():
                 fig.add_trace(go.Scatter(
                     y=spark_data, mode="lines+markers",
                     marker=dict(size=5, color=colors),
-                    line=dict(width=2, color="#3b82f6"),
+                    line=dict(width=2, color="#4caf50"),
                     showlegend=False,
                 ))
-                fig.add_hline(y=50, line_dash="dot", line_color="#ef4444", opacity=0.3)
+                fig.add_hline(y=50, line_dash="dot", line_color="#f44335", opacity=0.3)
                 fig.update_layout(
                     height=80, margin=dict(t=5, b=5, l=5, r=5),
                     paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)",
@@ -835,9 +956,9 @@ def personal_models_page():
                     fig.update_layout(
                         height=250, margin=dict(t=20, b=20),
                         paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)",
-                        font_color="#e2e8f0", showlegend=False,
-                        xaxis=dict(gridcolor="#1e293b", title="State"),
-                        yaxis=dict(gridcolor="#1e293b", title="Count"),
+                        font_color="#344767", showlegend=False,
+                        xaxis=dict(gridcolor="#e9ecef", title="State"),
+                        yaxis=dict(gridcolor="#e9ecef", title="Count"),
                     )
                     st.plotly_chart(fig, use_container_width=True)
 
@@ -870,17 +991,17 @@ def model_performance_page():
 
     fig = go.Figure()
     fig.add_trace(go.Bar(name="Accuracy", x=model_names, y=accuracies,
-                         marker_color="#3b82f6",
+                         marker_color="#4caf50",
                          text=[f"{a:.2%}" for a in accuracies], textposition="outside"))
     fig.add_trace(go.Bar(name="F1 Weighted", x=model_names, y=f1_scores,
-                         marker_color="#22c55e",
+                         marker_color="#1a73e8",
                          text=[f"{f:.2%}" for f in f1_scores], textposition="outside"))
     fig.update_layout(
         height=400, barmode="group",
         yaxis_range=[min(min(accuracies), min(f1_scores)) - 0.05, 1.02],
         paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)",
-        font_color="#e2e8f0",
-        xaxis=dict(gridcolor="#1e293b"), yaxis=dict(gridcolor="#1e293b"),
+        font_color="#344767",
+        xaxis=dict(gridcolor="#e9ecef"), yaxis=dict(gridcolor="#e9ecef"),
         legend=dict(font=dict(color="#e2e8f0")),
     )
     st.plotly_chart(fig, use_container_width=True)
@@ -946,7 +1067,7 @@ def dataset_explorer_page():
             fig.update_layout(
                 height=500,
                 paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)",
-                font_color="#e2e8f0",
+                font_color="#344767",
             )
             st.plotly_chart(fig, use_container_width=True)
 

@@ -3,10 +3,10 @@ headless = true
 port = 8501
 
 [theme]
-primaryColor = "#3b82f6"
-backgroundColor = "#0e1117"
-secondaryBackgroundColor = "#1a1f2e"
-textColor = "#e2e8f0"
+primaryColor = "#4caf50"
+backgroundColor = "#f0f2f5"
+secondaryBackgroundColor = "#ffffff"
+textColor = "#344767"
 font = "sans serif"
 
 [browser]
