@@ -84,8 +84,11 @@ st.markdown("""
     }
     div[data-testid="stMetric"] [data-testid="stMetricValue"] {
         color: #e2e8f0 !important;
-        font-size: 1.8rem !important;
+        font-size: 1.4rem !important;
         font-weight: 700 !important;
+        white-space: nowrap !important;
+        overflow: visible !important;
+        text-overflow: unset !important;
     }
 
     /* Sidebar */
@@ -506,7 +509,7 @@ def all_students_page():
 
         with st.container():
             cols = st.columns([2, 1, 1, 1, 1, 1, 1])
-            cols[0].markdown(f"**{row['Username']}** (`{row['Student ID'][:12]}...`)")
+            cols[0].markdown(f"**{row['Username']}** (`{row['Student ID']}`)")
             cols[1].markdown(f"Snapshots: **{row['Total Snapshots']}**")
             cols[2].markdown(f"Sessions: **{row['Sessions']}**")
             cols[3].markdown(f"Avg Focus: **{focus}**")
@@ -707,9 +710,9 @@ def live_monitor_page():
         focus = latest.get("focus_score", 0)
 
         with st.container():
-            cols = st.columns([2, 1, 1, 1, 3])
+            cols = st.columns([3, 1, 1, 1, 3])
 
-            cols[0].markdown(f"### {emoji} {sid[:15]}...")
+            cols[0].markdown(f"**{emoji} {sid}**")
             cols[1].metric("Focus", f"{focus:.0f}")
             cols[2].metric("State", state.capitalize() if state else "--")
             cols[3].metric("Snapshots", len(student_snaps))
@@ -783,7 +786,7 @@ def personal_models_page():
         with st.container():
             cols = st.columns([2, 1, 1, 1, 2])
 
-            cols[0].markdown(f"**{sid[:20]}...**")
+            cols[0].markdown(f"**{sid}**")
             cols[1].markdown(f"Snapshots: **{n_snaps}** / 300")
 
             if has_model:
