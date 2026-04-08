@@ -1,0 +1,153 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Student Focus Monitor</title>
+  <link rel="stylesheet" href="css/popup.css">
+</head>
+<body>
+  <!-- Login Screen -->
+  <div id="login-screen">
+    <div class="header">
+      <h1>Focus Monitor</h1>
+      <p class="subtitle">Track your study focus in real-time</p>
+    </div>
+
+    <div id="auth-error" class="auth-error" style="display: none;"></div>
+
+    <div class="form-group">
+      <label for="username">Username</label>
+      <input type="text" id="username" placeholder="Enter username">
+    </div>
+
+    <div class="form-group">
+      <label for="password">Password</label>
+      <input type="password" id="password" placeholder="Enter password">
+    </div>
+
+    <!-- Login mode (default) -->
+    <div id="login-mode">
+      <button id="login-btn" class="btn btn-primary">Login</button>
+      <button id="switch-to-register" class="btn btn-text">New here? Create Account</button>
+    </div>
+
+    <!-- Register mode -->
+    <div id="register-mode" style="display: none;">
+      <button id="register-btn" class="btn btn-primary">Create Account</button>
+      <button id="switch-to-login" class="btn btn-text">Already have an account? Login</button>
+    </div>
+  </div>
+
+  <!-- Setup Screen (after login) -->
+  <div id="setup-screen" style="display: none;">
+    <div class="header">
+      <h1>Focus Monitor</h1>
+      <p class="subtitle">Logged in as <strong id="logged-in-user"></strong></p>
+    </div>
+
+    <div class="info-box">
+      <p>This will track on: <strong id="current-site">loading...</strong></p>
+    </div>
+
+    <div class="privacy-note">
+      <p>We only track: tab switches (count), idle time, clicks, mouse movement, and video interactions. We do NOT track what websites you visit or any personal data.</p>
+    </div>
+
+    <button id="start-btn" class="btn btn-primary">Start Study Session</button>
+    <button id="logout-btn" class="btn btn-text">Logout</button>
+  </div>
+
+  <!-- Active Session Screen -->
+  <div id="session-screen" style="display: none;">
+    <div class="header active-header">
+      <div class="status-dot"></div>
+      <h1>Session Active</h1>
+    </div>
+
+    <div class="session-info">
+      <span id="session-website" class="website-badge">website</span>
+      <span id="session-timer" class="timer">00:00:00</span>
+    </div>
+    <div style="text-align:center;margin-bottom:10px;">
+      <span id="learning-style" class="learning-style-badge" style="display:none;"></span>
+    </div>
+
+    <!-- Focus Score -->
+    <div class="focus-card">
+      <div class="focus-score-container">
+        <svg class="score-ring" viewBox="0 0 120 120">
+          <circle class="ring-bg" cx="60" cy="60" r="52" />
+          <circle id="score-ring-fill" class="ring-fill" cx="60" cy="60" r="52" />
+        </svg>
+        <div class="score-text">
+          <span id="focus-score">--</span>
+          <span class="score-label">Focus</span>
+        </div>
+      </div>
+      <div id="state-badge" class="state-badge state-unknown">Waiting...</div>
+      <p id="state-message" class="state-message"></p>
+    </div>
+
+    <!-- Live Stats -->
+    <div class="stats-grid">
+      <div class="stat-card">
+        <span class="stat-icon">&#x21C4;</span>
+        <span id="stat-tabs" class="stat-value">0</span>
+        <span class="stat-label">Tab Switches</span>
+      </div>
+      <div class="stat-card">
+        <span class="stat-icon">&#x23F3;</span>
+        <span id="stat-idle" class="stat-value">0s</span>
+        <span class="stat-label">Idle Time</span>
+      </div>
+      <div class="stat-card">
+        <span class="stat-icon">&#x1F6AB;</span>
+        <span id="stat-away" class="stat-value">0s</span>
+        <span class="stat-label">Away Time</span>
+      </div>
+      <div class="stat-card">
+        <span class="stat-icon">&#x1F5B1;</span>
+        <span id="stat-clicks" class="stat-value">0</span>
+        <span class="stat-label">Clicks</span>
+      </div>
+      <div class="stat-card">
+        <span class="stat-icon">&#x21BB;</span>
+        <span id="stat-replays" class="stat-value">0</span>
+        <span class="stat-label">Replays</span>
+      </div>
+      <div class="stat-card">
+        <span class="stat-icon">&#x23ED;</span>
+        <span id="stat-skips" class="stat-value">0</span>
+        <span class="stat-label">Skips</span>
+      </div>
+      <div class="stat-card">
+        <span class="stat-icon">&#x25B6;</span>
+        <span id="stat-speed" class="stat-value">1.0x</span>
+        <span class="stat-label">Speed</span>
+      </div>
+    </div>
+
+    <div class="snapshot-info">
+      <span id="snapshot-count">0</span> snapshots recorded
+    </div>
+
+    <button id="history-btn" class="btn btn-secondary">Snapshot History</button>
+    <button id="stop-btn" class="btn btn-danger">Stop Session</button>
+  </div>
+
+  <!-- Snapshot History Screen -->
+  <div id="history-screen" style="display: none;">
+    <div class="header">
+      <h1>Snapshot History</h1>
+      <p class="subtitle" id="history-subtitle"></p>
+    </div>
+
+    <div id="snapshot-list" class="snapshot-list"></div>
+
+    <button id="back-btn" class="btn btn-secondary">Back to Session</button>
+  </div>
+
+  <script src="js/popup.js"></script>
+</body>
+</html>

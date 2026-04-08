@@ -1,0 +1,180 @@
+# =============================================================================
+# Student Focus Monitoring System - Configuration
+# =============================================================================
+
+# --- Dataset Generation ---
+dataset:
+  total_rows: 40000
+  num_students: 200
+  sessions_per_student: 25        # avg sessions per student
+  snapshots_per_session: 8        # avg snapshots per session
+  random_seed: 42
+  output_path: "data/student_focus_dataset.csv"
+
+  # Class distribution (balanced)
+  classes:
+    - focused
+    - distracted
+    - confused
+    - bored
+  rows_per_class: 10000
+
+  # Behavioral feature ranges
+  features:
+    tab_switch:
+      min: 0
+      max: 20
+    idle_time:
+      min: 0.0
+      max: 300.0       # seconds
+    clicks:
+      min: 0
+      max: 100
+    mouse_movement:
+      min: 0.0
+      max: 5000.0      # pixels
+    replay_count:
+      min: 0
+      max: 15
+    skip_count:
+      min: 0
+      max: 10
+    playback_speed:
+      min: 0.5
+      max: 3.0
+
+# --- Focus Score ---
+focus_score:
+  min: 0
+  max: 100
+  weights:
+    tab_switch: -3.0
+    idle_time: -0.15
+    clicks: 0.3
+    mouse_movement: 0.005
+    replay_count: -1.5
+    skip_count: -2.5
+    playback_speed_deviation: -10.0   # deviation from 1.0
+  temporal_decay: 0.85                # weight decay for older snapshots
+  smoothing_window: 3                 # rolling average window
+
+# --- Feature Engineering ---
+feature_engineering:
+  sliding_window_size: 5
+  lagged_features:
+    - tab_switch
+    - idle_time
+    - clicks
+    - mouse_movement
+    - replay_count
+    - skip_count
+  rolling_stats_window: 3
+  rolling_stats:
+    - mean
+    - std
+    - max
+
+# --- Model Parameters ---
+models:
+  random_forest:
+    n_estimators: 200
+    max_depth: 20
+    min_samples_split: 5
+    min_samples_leaf: 2
+    class_weight: "balanced"
+    random_state: 42
+    n_jobs: -1
+
+  xgboost:
+    n_estimators: 200
+    max_depth: 8
+    learning_rate: 0.1
+    subsample: 0.8
+    colsample_bytree: 0.8
+    objective: "multi:softprob"
+    num_class: 4
+    random_state: 42
+    n_jobs: -1
+
+  lstm:
+    sequence_length: 5
+    hidden_units: 128
+    dropout: 0.3
+    recurrent_dropout: 0.2
+    dense_units: 64
+    epochs: 50
+    batch_size: 64
+    learning_rate: 0.001
+    early_stopping_patience: 5
+    validation_split: 0.2
+
+# --- Training ---
+training:
+  test_size: 0.2
+  validation_size: 0.1
+  random_state: 42
+  cross_validation_folds: 5
+  stratify: true
+
+# --- Evaluation ---
+evaluation:
+  metrics:
+    - accuracy
+    - f1_weighted
+    - f1_macro
+    - precision
+    - recall
+  save_confusion_matrix: true
+  save_roc_curves: true
+  save_feature_importance: true
+  per_student_analysis: true
+  output_dir: "outputs"
+
+# --- Adaptive Response ---
+adaptive_response:
+  thresholds:
+    confused:
+      focus_score_below: 40
+      replay_count_above: 3
+      action: "show_hint"
+    bored:
+      focus_score_below: 35
+      skip_count_above: 3
+      action: "increase_difficulty"
+    distracted:
+      focus_score_below: 30
+      tab_switch_above: 5
+      action: "send_notification"
+    critical:
+      focus_score_below: 20
+      action: "alert_instructor"
+
+  interventions:
+    show_hint:
+      message: "Need help? Here's a hint for this section."
+      priority: 2
+    increase_difficulty:
+      message: "Ready for a challenge? Let's try something harder."
+      priority: 3
+    send_notification:
+      message: "Hey! Let's get back on track."
+      priority: 1
+    alert_instructor:
+      message: "Student may need direct assistance."
+      priority: 0
+
+# --- Dashboard ---
+dashboard:
+  refresh_interval: 5     # seconds
+  max_students_display: 20
+  chart_theme: "plotly_white"
+  port: 8501
+
+# --- Paths ---
+paths:
+  data_dir: "data"
+  models_dir: "models_saved"
+  outputs_dir: "outputs"
+  plots_dir: "outputs/plots"
+  reports_dir: "outputs/reports"
+  metrics_file: "outputs/metrics.json"

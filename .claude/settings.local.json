@@ -1,0 +1,23 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(py src/data_generation.py)",
+      "Bash(py src/data_validation.py)",
+      "Bash(py src/focus_score.py)",
+      "Bash(py src/feature_engineering.py)",
+      "Bash(py -m pip install xgboost tensorflow joblib --quiet)",
+      "Bash(py -m pip install flask flask-cors --quiet)",
+      "Bash(py src/adaptive_response.py)",
+      "Bash(py backend/app.py)",
+      "Bash(py -c ':*)",
+      "Bash(curl:*)",
+      "Bash(taskkill //F //FI \"WINDOWTITLE eq *flask*\")",
+      "Bash(fuser -k 5000/tcp)",
+      "Bash(py:*)",
+      "Bash(taskkill //F //FI \"WINDOWTITLE eq *streamlit*\")",
+      "Bash(pkill -f \"streamlit run\")",
+      "Bash(netstat -ano)",
+      "Bash(taskkill:*)"
+    ]
+  }
+}
