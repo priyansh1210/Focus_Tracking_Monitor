@@ -54,7 +54,7 @@ except Exception:
 # ---- Page Config ----
 st.set_page_config(
     page_title="Focus Monitor - Owner Dashboard",
-    page_icon="🎯",
+    page_icon="FM",
     layout="wide",
     initial_sidebar_state="expanded",
 )
@@ -111,6 +111,17 @@ st.markdown("""
         border-right: none;
     }
     section[data-testid="stSidebar"] * {
+        color: #ffffff !important;
+    }
+    /* Sidebar metric cards — dark background so text is visible */
+    section[data-testid="stSidebar"] div[data-testid="stMetric"] {
+        background: rgba(255,255,255,0.1) !important;
+        box-shadow: none !important;
+    }
+    section[data-testid="stSidebar"] div[data-testid="stMetric"] label {
+        color: rgba(255,255,255,0.7) !important;
+    }
+    section[data-testid="stSidebar"] div[data-testid="stMetric"] [data-testid="stMetricValue"] {
         color: #ffffff !important;
     }
     section[data-testid="stSidebar"] .stRadio label {
@@ -272,11 +283,11 @@ STATE_COLORS = {
     "confused": "#1a73e8",
     "bored": "#7b1fa2",
 }
-STATE_EMOJIS = {
-    "focused": "🟢",
-    "distracted": "🟠",
-    "confused": "🔵",
-    "bored": "🟣",
+STATE_ICONS = {
+    "focused": "●",
+    "distracted": "●",
+    "confused": "●",
+    "bored": "●",
 }
 
 # Chart layout defaults for light theme
@@ -299,7 +310,7 @@ def check_auth():
         st.session_state.authenticated = False
 
     if not st.session_state.authenticated:
-        st.markdown("## 🎯 Student Focus Monitor")
+        st.markdown("## Student Focus Monitor")
         st.markdown("### Owner Login")
         st.markdown("---")
 
@@ -403,18 +414,18 @@ def load_student_models_info():
 # ---- Sidebar ----
 
 def render_sidebar():
-    st.sidebar.markdown("## 🎯 Focus Monitor")
+    st.sidebar.markdown("## Focus Monitor")
     st.sidebar.markdown(f"**Owner Dashboard**")
     st.sidebar.markdown("---")
 
     page = st.sidebar.radio("Navigation", [
-        "🏠 Overview",
-        "👥 All Students",
-        "🔍 Student Deep Dive",
-        "📡 Live Monitor",
-        "🧠 Personal Models",
-        "📊 Model Performance",
-        "📁 Dataset Explorer",
+        "Overview",
+        "All Students",
+        "Student Deep Dive",
+        "Live Monitor",
+        "Personal Models",
+        "Model Performance",
+        "Dataset Explorer",
     ])
 
     st.sidebar.markdown("---")
@@ -438,7 +449,7 @@ def render_sidebar():
 # ---- Pages ----
 
 def overview_page():
-    st.markdown("# 🏠 Dashboard Overview")
+    st.markdown("# Dashboard Overview")
 
     snaps = load_real_snapshots()
     sessions = load_sessions()
@@ -522,7 +533,7 @@ def overview_page():
         st.plotly_chart(fig, use_container_width=True)
 
         # Alerts
-        st.markdown("### ⚠️ Alerts")
+        st.markdown("### Alerts")
         alerts = []
         for sid in snaps["student_id"].unique():
             student_snaps = snaps[snaps["student_id"] == sid]
@@ -542,7 +553,7 @@ def overview_page():
         if alerts:
             for level, sid, msg in alerts:
                 css_class = "alert-card" if level == "critical" else "alert-card-warning"
-                icon = "🔴" if level == "critical" else "🟡"
+                icon = "CRITICAL:" if level == "critical" else "WARNING:"
                 st.markdown(f'<div class="{css_class}">{icon} <strong>{sid}</strong>: {msg}</div>',
                             unsafe_allow_html=True)
         else:
@@ -550,7 +561,7 @@ def overview_page():
 
 
 def all_students_page():
-    st.markdown("# 👥 All Students")
+    st.markdown("# All Students")
 
     snaps = load_real_snapshots()
     users = load_users()
@@ -616,7 +627,7 @@ def all_students_page():
 
     for _, row in df_students.iterrows():
         state = row["Current State"]
-        emoji = STATE_EMOJIS.get(state, "⚪")
+        emoji = STATE_ICONS.get(state, "●")
         color = STATE_COLORS.get(state, "#888")
         focus = row["Avg Focus"]
 
@@ -663,7 +674,7 @@ def all_students_page():
 
 
 def student_deep_dive_page():
-    st.markdown("# 🔍 Student Deep Dive")
+    st.markdown("# Student Deep Dive")
 
     snaps = load_real_snapshots()
     df_synth = load_synthetic_data()
@@ -801,7 +812,7 @@ def student_deep_dive_page():
 
 
 def live_monitor_page():
-    st.markdown("# 📡 Live Monitor")
+    st.markdown("# Live Monitor")
 
     # Auto-refresh toggle
     col1, col2 = st.columns([3, 1])
@@ -827,7 +838,7 @@ def live_monitor_page():
         recent = student_snaps.tail(10)
 
         state = latest.get("predicted_state", "unknown")
-        emoji = STATE_EMOJIS.get(state, "⚪")
+        emoji = STATE_ICONS.get(state, "●")
         focus = latest.get("focus_score", 0)
 
         with st.container():
@@ -874,7 +885,7 @@ def live_monitor_page():
 
 
 def personal_models_page():
-    st.markdown("# 🧠 Personal Models")
+    st.markdown("# Personal Models")
 
     snaps = load_real_snapshots()
     models_info = load_student_models_info()
@@ -911,7 +922,7 @@ def personal_models_page():
             cols[1].markdown(f"Snapshots: **{n_snaps}** / 300")
 
             if has_model:
-                cols[2].markdown(f"✅ **Model trained**")
+                cols[2].markdown(f"**Model trained**")
                 cols[3].markdown(f"CV F1: **{meta.get('cv_mean', '--')}**")
                 cols[4].markdown(f"Trained: {meta.get('trained_at', '--')[:19]}")
             elif n_snaps >= 300:
@@ -919,16 +930,16 @@ def personal_models_page():
                 if "predicted_state" in student_snaps.columns:
                     n_classes = student_snaps["predicted_state"].nunique()
                     if n_classes >= 3:
-                        cols[2].markdown("⏳ **Ready to train**")
+                        cols[2].markdown("**Ready to train**")
                     else:
-                        cols[2].markdown(f"⚠️ Need 3+ classes (have {n_classes})")
+                        cols[2].markdown(f"Need 3+ classes (have {n_classes})")
                 else:
-                    cols[2].markdown("⚠️ No state labels")
+                    cols[2].markdown("No state labels")
                 cols[3].markdown("--")
                 cols[4].markdown("--")
             else:
                 remaining = 300 - n_snaps
-                cols[2].markdown(f"📊 Need **{remaining}** more snapshots")
+                cols[2].markdown(f"Need **{remaining}** more snapshots")
                 cols[3].markdown("--")
                 mins = remaining * 0.5  # 30s per snapshot
                 cols[4].markdown(f"~{mins:.0f} min of study time")
@@ -964,7 +975,7 @@ def personal_models_page():
 
 
 def model_performance_page():
-    st.markdown("# 📊 Model Performance")
+    st.markdown("# Model Performance")
 
     metrics = load_metrics()
     if metrics is None:
@@ -1037,7 +1048,7 @@ def model_performance_page():
 
 
 def dataset_explorer_page():
-    st.markdown("# 📁 Dataset Explorer")
+    st.markdown("# Dataset Explorer")
 
     tab1, tab2 = st.tabs(["Synthetic Dataset", "Live Data"])
 
@@ -1095,13 +1106,13 @@ if check_auth():
     page = render_sidebar()
 
     page_map = {
-        "🏠 Overview": overview_page,
-        "👥 All Students": all_students_page,
-        "🔍 Student Deep Dive": student_deep_dive_page,
-        "📡 Live Monitor": live_monitor_page,
-        "🧠 Personal Models": personal_models_page,
-        "📊 Model Performance": model_performance_page,
-        "📁 Dataset Explorer": dataset_explorer_page,
+        "Overview": overview_page,
+        "All Students": all_students_page,
+        "Student Deep Dive": student_deep_dive_page,
+        "Live Monitor": live_monitor_page,
+        "Personal Models": personal_models_page,
+        "Model Performance": model_performance_page,
+        "Dataset Explorer": dataset_explorer_page,
     }
 
     page_map[page]()
