@@ -125,6 +125,8 @@ def init_db():
             snapshot_index INTEGER,
             tab_switch INTEGER DEFAULT 0,
             idle_time REAL DEFAULT 0,
+            paused_time REAL DEFAULT 0,
+            away_time REAL DEFAULT 0,
             clicks INTEGER DEFAULT 0,
             mouse_movement REAL DEFAULT 0,
             replay_count INTEGER DEFAULT 0,
@@ -205,6 +207,20 @@ def init_db():
     cur.execute("CREATE INDEX IF NOT EXISTS idx_sessions_student ON sessions(student_id)")
 
     conn.commit()
+
+    # Migrations: add new columns to existing tables
+    migrations = [
+        ("snapshots", "paused_time", "REAL DEFAULT 0"),
+        ("snapshots", "away_time", "REAL DEFAULT 0"),
+    ]
+    for table, column, col_type in migrations:
+        try:
+            cur.execute(f"ALTER TABLE {table} ADD COLUMN {column} {col_type}")
+            conn.commit()
+            print(f"[DB] Added column {column} to {table}")
+        except Exception:
+            pass  # column already exists
+
     cur.close()
     conn.close()
     print(f"[DB] Database initialized ({'PostgreSQL' if USE_POSTGRES else 'SQLite'})")
@@ -777,13 +793,14 @@ def receive_snapshot():
     conn.execute(q("""
         INSERT INTO snapshots
             (student_id, session_id, timestamp, snapshot_index, tab_switch,
-             idle_time, clicks, mouse_movement, replay_count, skip_count,
+             idle_time, paused_time, away_time, clicks, mouse_movement, replay_count, skip_count,
              playback_speed, website, elapsed_seconds, focus_score, predicted_state)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     """), (
         student_id, session_id, data.get("timestamp"),
         data.get("snapshot_index", 0),
         data.get("tab_switch", 0), data.get("idle_time", 0),
+        data.get("paused_time", 0), data.get("away_time", 0),
         data.get("clicks", 0), data.get("mouse_movement", 0),
         data.get("replay_count", 0), data.get("skip_count", 0),
         data.get("playback_speed", 1.0),

@@ -96,6 +96,7 @@ body {
 
 .info-box strong {
   color: #3b82f6;
+  word-break: break-all;
 }
 
 .privacy-note {

@@ -125,6 +125,8 @@ def init_tables():
             snapshot_index INTEGER,
             tab_switch INTEGER DEFAULT 0,
             idle_time REAL DEFAULT 0,
+            paused_time REAL DEFAULT 0,
+            away_time REAL DEFAULT 0,
             clicks INTEGER DEFAULT 0,
             mouse_movement REAL DEFAULT 0,
             replay_count INTEGER DEFAULT 0,

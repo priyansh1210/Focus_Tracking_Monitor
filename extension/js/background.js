@@ -30,6 +30,8 @@ let session = {
   eventLog: [],           // detailed event log for current snapshot window
   snapshotWindowStart: null, // when current 30s window started
   videoPaused: false,     // true when student paused the video (may be taking notes)
+  videoPausedStart: null, // timestamp when video was paused
+  totalPausedTime: 0,     // seconds video has been paused
   scrollDetected: false,  // true if page was scrolled in this snapshot window
 };
 
@@ -55,7 +57,7 @@ function logEvent(type, detail) {
 
 chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
   if (msg.type === "START_SESSION") {
-    startSession(msg.studentId, msg.website, sender.tab?.id);
+    startSession(msg.studentId, msg.website, msg.tabId || sender.tab?.id);
     sendResponse({ status: "started", sessionId: session.sessionId });
   }
   else if (msg.type === "STOP_SESSION") {
@@ -99,6 +101,10 @@ function startSession(studentId, website, tabId) {
     studyTabId: tabId,
     eventLog: [],
     snapshotWindowStart: now,
+    videoPaused: false,
+    videoPausedStart: null,
+    totalPausedTime: 0,
+    scrollDetected: false,
   };
 
   // Save session state
@@ -230,11 +236,19 @@ function handleContentEvent(event) {
       break;
     case "video_pause":
       session.videoPaused = true;
+      session.videoPausedStart = Date.now();
       logEvent("video_pause", "Student paused video");
       break;
     case "video_play":
+      if (session.videoPaused && session.videoPausedStart) {
+        const pausedDuration = (Date.now() - session.videoPausedStart) / 1000;
+        session.totalPausedTime += pausedDuration;
+        logEvent("video_play", `Student resumed video (paused ${Math.round(pausedDuration)}s)`);
+      } else {
+        logEvent("video_play", "Student resumed video");
+      }
       session.videoPaused = false;
-      logEvent("video_play", "Student resumed video");
+      session.videoPausedStart = null;
       break;
     case "video_speed":
       const oldSpeed = session.playbackSpeed;
@@ -282,14 +296,15 @@ function takeSnapshot() {
   // Use the higher of the two (interaction-based is more reliable)
   let realIdleTime = Math.max(interactionIdleTime, chromeIdleTime);
 
-  // If video is paused and no scrolling detected, student is likely writing
-  // in a physical notebook — count the full paused duration as idle
-  if (session.videoPaused && !session.scrollDetected) {
-    realIdleTime = Math.max(realIdleTime, windowDuration - currentAwayTime);
+  // Calculate paused time in this window
+  let currentPausedTime = session.totalPausedTime;
+  if (session.videoPaused && session.videoPausedStart) {
+    currentPausedTime += (now - session.videoPausedStart) / 1000;
   }
 
-  // Subtract away time from idle (they were on another tab, not idle on study tab)
-  let idleOnStudyTab = Math.max(0, realIdleTime - currentAwayTime);
+  // Subtract paused time and away time from idle
+  // (paused is its own category, away is its own category)
+  let idleOnStudyTab = Math.max(0, realIdleTime - currentAwayTime - currentPausedTime);
 
   // Away time ratio: what fraction of this window was spent away
   let awayRatio = windowDuration > 0 ? currentAwayTime / windowDuration : 0;
@@ -301,6 +316,7 @@ function takeSnapshot() {
     snapshot_index: session.snapshots.length,
     tab_switch: session.tabSwitchCount,
     idle_time: Math.round(idleOnStudyTab * 10) / 10,
+    paused_time: Math.round(currentPausedTime * 10) / 10,
     away_time: Math.round(currentAwayTime * 10) / 10,
     away_ratio: Math.round(awayRatio * 100) / 100,
     clicks: session.clicks,
@@ -330,6 +346,10 @@ function takeSnapshot() {
   session.skipCount = 0;
   session.idleStart = null;
   session.tabAwayStart = null;
+  session.totalPausedTime = 0;
+  if (session.videoPaused) {
+    session.videoPausedStart = Date.now(); // reset window start for ongoing pause
+  }
   session.eventLog = [];
   session.lastInteraction = Date.now();
   session.snapshotWindowStart = Date.now();
@@ -408,16 +428,23 @@ function getSessionStatus() {
   const now = Date.now();
   const elapsed = Math.round((now - session.startTime) / 1000);
 
-  // Calculate real idle time for display
-  let displayIdleTime = 0;
-  if (session.lastInteraction) {
-    displayIdleTime = Math.round((now - session.lastInteraction) / 1000);
+  // Calculate paused time for display
+  let displayPausedTime = Math.round(session.totalPausedTime);
+  if (session.videoPaused && session.videoPausedStart) {
+    displayPausedTime += Math.round((now - session.videoPausedStart) / 1000);
   }
 
   // Calculate away time for display
   let displayAwayTime = Math.round(session.totalAwayTime);
   if (session.tabAwayStart) {
     displayAwayTime += Math.round((now - session.tabAwayStart) / 1000);
+  }
+
+  // Calculate real idle time for display (subtract paused and away time)
+  let displayIdleTime = 0;
+  if (session.lastInteraction) {
+    let rawIdle = Math.round((now - session.lastInteraction) / 1000);
+    displayIdleTime = Math.max(0, rawIdle - displayPausedTime - displayAwayTime);
   }
 
   return {
@@ -429,6 +456,7 @@ function getSessionStatus() {
     tabSwitches: session.tabSwitchCount,
     idleTime: displayIdleTime,
     awayTime: displayAwayTime,
+    pausedTime: displayPausedTime,
     clicks: session.clicks,
     mouseDistance: Math.round(session.mouseDistance),
     replayCount: session.replayCount,

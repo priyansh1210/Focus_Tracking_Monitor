@@ -765,7 +765,7 @@ def student_deep_dive_page():
 
     # Behavioral radar
     st.markdown("### Behavioral Profile")
-    features = ["tab_switch", "idle_time", "clicks", "mouse_movement",
+    features = ["tab_switch", "idle_time", "paused_time", "clicks", "mouse_movement",
                 "replay_count", "skip_count"]
     available_feats = [f for f in features if f in student_df.columns and f in df.columns]
 
@@ -844,7 +844,9 @@ def live_monitor_page():
         with st.container():
             cols = st.columns([3, 1, 1, 1, 3])
 
-            cols[0].markdown(f"**{emoji} {sid}**")
+            website = latest.get("website", "")
+            website_display = f"[{website}](https://{website})" if website else "--"
+            cols[0].markdown(f"**{emoji} {sid}**\n\n{website_display}")
             cols[1].metric("Focus", f"{focus:.0f}")
             cols[2].metric("State", state.capitalize() if state else "--")
             cols[3].metric("Snapshots", len(student_snaps))
@@ -873,9 +875,9 @@ def live_monitor_page():
     # Recent snapshots table
     st.markdown("### Recent Snapshots")
     recent_all = snaps.tail(20).iloc[::-1]
-    display_cols = ["student_id", "timestamp", "focus_score", "predicted_state",
-                    "tab_switch", "idle_time", "clicks", "mouse_movement",
-                    "replay_count", "skip_count", "playback_speed"]
+    display_cols = ["student_id", "timestamp", "website", "focus_score", "predicted_state",
+                    "tab_switch", "idle_time", "paused_time", "away_time", "clicks",
+                    "mouse_movement", "replay_count", "skip_count", "playback_speed"]
     available = [c for c in display_cols if c in recent_all.columns]
     st.dataframe(recent_all[available], use_container_width=True, hide_index=True)
 
@@ -1069,7 +1071,7 @@ def dataset_explorer_page():
             st.dataframe(df.describe().round(2), use_container_width=True)
 
             st.markdown("### Correlation Heatmap")
-            numeric_cols = ["tab_switch", "idle_time", "clicks", "mouse_movement",
+            numeric_cols = ["tab_switch", "idle_time", "paused_time", "clicks", "mouse_movement",
                             "replay_count", "skip_count", "playback_speed", "focus_score"]
             available = [c for c in numeric_cols if c in df.columns]
             corr = df[available].corr()
