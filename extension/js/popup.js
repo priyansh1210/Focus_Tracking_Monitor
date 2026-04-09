@@ -106,12 +106,8 @@ async function showLoggedInState(authUser) {
   if (tab?.url) {
     try {
       const url = new URL(tab.url);
-      // Show hostname + pathname (trimmed) for better context
-      let display = url.hostname + url.pathname;
-      if (display.length > 50) {
-        display = display.substring(0, 47) + "...";
-      }
-      currentSiteEl.textContent = display;
+      // Show full hostname + pathname
+      currentSiteEl.textContent = url.hostname + url.pathname + url.search;
     } catch {
       currentSiteEl.textContent = "this page";
     }
@@ -145,13 +141,14 @@ startBtn.addEventListener("click", async () => {
   let website = "unknown";
   try {
     const url = new URL(tab.url);
-    website = url.hostname + url.pathname;
+    website = url.hostname + url.pathname + url.search;
   } catch {}
 
   chrome.runtime.sendMessage({
     type: "START_SESSION",
     studentId: studentId,
     website: website,
+    tabId: tab?.id,
   }, (response) => {
     if (response && response.status === "started") {
       showScreen("session");
@@ -233,6 +230,7 @@ function renderSnapshotHistory() {
           <div class="snapshot-metrics">
             <div class="metric"><span class="metric-label">Tab Switches</span><span class="metric-value">${snap.tab_switch}</span></div>
             <div class="metric"><span class="metric-label">Idle Time</span><span class="metric-value">${snap.idle_time}s</span></div>
+            <div class="metric"><span class="metric-label">Paused</span><span class="metric-value">${snap.paused_time || 0}s</span></div>
             <div class="metric"><span class="metric-label">Clicks</span><span class="metric-value">${snap.clicks}</span></div>
             <div class="metric"><span class="metric-label">Mouse</span><span class="metric-value">${snap.mouse_movement}px</span></div>
             <div class="metric"><span class="metric-label">Replays</span><span class="metric-value">${snap.replay_count}</span></div>
@@ -304,6 +302,7 @@ function updateStats() {
     // Stats
     document.getElementById("stat-tabs").textContent = response.tabSwitches;
     document.getElementById("stat-idle").textContent = response.idleTime + "s";
+    document.getElementById("stat-paused").textContent = (response.pausedTime || 0) + "s";
     document.getElementById("stat-away").textContent = response.awayTime + "s";
     document.getElementById("stat-clicks").textContent = response.clicks;
     document.getElementById("stat-replays").textContent = response.replayCount;
