@@ -32,7 +32,6 @@ let session = {
   videoPaused: false,     // true when student paused the video (may be taking notes)
   videoPausedStart: null, // timestamp when video was paused
   totalPausedTime: 0,     // seconds video has been paused
-  scrollDetected: false,  // true if page was scrolled in this snapshot window
 };
 
 const BACKEND_URL = "http://localhost:5000/api";
@@ -104,7 +103,6 @@ function startSession(studentId, website, tabId) {
     videoPaused: false,
     videoPausedStart: null,
     totalPausedTime: 0,
-    scrollDetected: false,
   };
 
   // Save session state
@@ -174,7 +172,19 @@ chrome.windows.onFocusChanged.addListener((windowId) => {
       session.tabSwitchCount++;
       logEvent("window_away", "Browser lost focus");
     }
+  } else {
+    // Browser regained focus — close the away interval
+    if (session.tabAwayStart) {
+      const awayDuration = (now - session.tabAwayStart) / 1000;
+      session.totalAwayTime += awayDuration;
+      logEvent("window_return", `Browser regained focus after ${Math.round(awayDuration)}s`);
+      session.tabAwayStart = null;
+    }
+    // Restart the idle clock from the moment of return so idle doesn't
+    // keep counting the time the user was in another app.
+    session.lastInteraction = now;
   }
+  chrome.storage.local.set({ session });
 });
 
 // ---- Idle Detection ----
@@ -224,7 +234,6 @@ function handleContentEvent(event) {
       session.mouseDistance += event.distance || 0;
       break;
     case "scroll":
-      session.scrollDetected = true;
       break;
     case "video_replay":
       session.replayCount++;
@@ -353,7 +362,6 @@ function takeSnapshot() {
   session.eventLog = [];
   session.lastInteraction = Date.now();
   session.snapshotWindowStart = Date.now();
-  session.scrollDetected = false;
 
   console.log(`[Focus Monitor] Snapshot #${snapshot.snapshot_index} taken`);
 }
@@ -440,12 +448,21 @@ function getSessionStatus() {
     displayAwayTime += Math.round((now - session.tabAwayStart) / 1000);
   }
 
-  // Calculate real idle time for display (subtract paused and away time)
-  let displayIdleTime = 0;
+  // Calculate real idle time for display — mirror takeSnapshot's logic so the
+  // popup never disagrees with what the snapshot is about to record.
+  let interactionIdleTime = 0;
   if (session.lastInteraction) {
-    let rawIdle = Math.round((now - session.lastInteraction) / 1000);
-    displayIdleTime = Math.max(0, rawIdle - displayPausedTime - displayAwayTime);
+    interactionIdleTime = (now - session.lastInteraction) / 1000;
   }
+  let chromeIdleTime = session.totalIdleTime;
+  if (session.idleStart) {
+    chromeIdleTime += (now - session.idleStart) / 1000;
+  }
+  const realIdleTime = Math.max(interactionIdleTime, chromeIdleTime);
+  const displayIdleTime = Math.max(
+    0,
+    Math.round(realIdleTime - displayPausedTime - displayAwayTime)
+  );
 
   return {
     active: true,

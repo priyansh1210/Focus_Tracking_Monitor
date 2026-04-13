@@ -480,6 +480,16 @@ def overview_page():
         c5.metric("Most Common State", "--")
         st.info("No live data yet. Start the backend and Chrome extension to collect data.")
 
+    # Behavioral totals (paused / away / idle) — new fields from extension rewrite
+    if snaps is not None and len(snaps) > 0:
+        d1, d2, d3 = st.columns(3)
+        total_paused = snaps["paused_time"].sum() if "paused_time" in snaps.columns else 0
+        total_away = snaps["away_time"].sum() if "away_time" in snaps.columns else 0
+        total_idle = snaps["idle_time"].sum() if "idle_time" in snaps.columns else 0
+        d1.metric("Total Paused", f"{total_paused / 60:.1f} min")
+        d2.metric("Total Away", f"{total_away / 60:.1f} min")
+        d3.metric("Total Idle", f"{total_idle / 60:.1f} min")
+
     st.markdown("---")
 
     if snaps is not None and len(snaps) > 0:
@@ -595,6 +605,10 @@ def all_students_page():
             if len(mode) > 0:
                 dominant = mode[0]
 
+        avg_paused = round(s["paused_time"].mean(), 1) if "paused_time" in s.columns else 0
+        avg_away = round(s["away_time"].mean(), 1) if "away_time" in s.columns else 0
+        avg_idle = round(s["idle_time"].mean(), 1) if "idle_time" in s.columns else 0
+
         student_data.append({
             "Student ID": sid,
             "Username": username,
@@ -604,6 +618,9 @@ def all_students_page():
             "Recent Focus (last 10)": round(recent["focus_score"].mean(), 1),
             "Current State": dominant,
             "Learning Style": learning_style.capitalize(),
+            "Avg Idle (s)": avg_idle,
+            "Avg Paused (s)": avg_paused,
+            "Avg Away (s)": avg_away,
             "Last Active": s["timestamp"].iloc[-1] if "timestamp" in s.columns else "--",
         })
 
@@ -648,6 +665,13 @@ def all_students_page():
             cols[4].markdown(f"Recent: **{row['Recent Focus (last 10)']}**")
             cols[5].markdown(f"{emoji} **{state.capitalize()}**")
             cols[6].markdown(f"Style: **{row['Learning Style']}**")
+
+            # Behavioral averages row
+            bcols = st.columns([2, 1, 1, 1])
+            bcols[0].markdown("<span style='color:#6c757d;font-size:12px;'>Avg behavioral (per snapshot)</span>", unsafe_allow_html=True)
+            bcols[1].markdown(f"Idle: **{row['Avg Idle (s)']}s**")
+            bcols[2].markdown(f"Paused: **{row['Avg Paused (s)']}s**")
+            bcols[3].markdown(f"Away: **{row['Avg Away (s)']}s**")
 
             # Mini focus bar
             st.progress(min(focus / 100, 1.0))
@@ -765,8 +789,8 @@ def student_deep_dive_page():
 
     # Behavioral radar
     st.markdown("### Behavioral Profile")
-    features = ["tab_switch", "idle_time", "paused_time", "clicks", "mouse_movement",
-                "replay_count", "skip_count"]
+    features = ["tab_switch", "idle_time", "paused_time", "away_time", "clicks",
+                "mouse_movement", "replay_count", "skip_count"]
     available_feats = [f for f in features if f in student_df.columns and f in df.columns]
 
     if available_feats:
@@ -850,6 +874,15 @@ def live_monitor_page():
             cols[1].metric("Focus", f"{focus:.0f}")
             cols[2].metric("State", state.capitalize() if state else "--")
             cols[3].metric("Snapshots", len(student_snaps))
+
+            # Latest behavioral readings
+            idle_s = latest.get("idle_time", 0) or 0
+            paused_s = latest.get("paused_time", 0) or 0
+            away_s = latest.get("away_time", 0) or 0
+            bcols = st.columns(3)
+            bcols[0].metric("Idle (last snap)", f"{idle_s:.0f}s")
+            bcols[1].metric("Paused (last snap)", f"{paused_s:.0f}s")
+            bcols[2].metric("Away (last snap)", f"{away_s:.0f}s")
 
             # Mini sparkline
             with cols[4]:
@@ -1071,8 +1104,9 @@ def dataset_explorer_page():
             st.dataframe(df.describe().round(2), use_container_width=True)
 
             st.markdown("### Correlation Heatmap")
-            numeric_cols = ["tab_switch", "idle_time", "paused_time", "clicks", "mouse_movement",
-                            "replay_count", "skip_count", "playback_speed", "focus_score"]
+            numeric_cols = ["tab_switch", "idle_time", "paused_time", "away_time",
+                            "clicks", "mouse_movement", "replay_count", "skip_count",
+                            "playback_speed", "focus_score"]
             available = [c for c in numeric_cols if c in df.columns]
             corr = df[available].corr()
             fig = px.imshow(corr, text_auto=".2f", color_continuous_scale="RdBu_r",

@@ -15,11 +15,18 @@ let contextValid = true;
 function safeSendMessage(msg) {
   if (!contextValid) return;
   try {
-    const id = chrome.runtime?.id;
-    if (!id) { contextValid = false; return; }
-    chrome.runtime.sendMessage(msg).catch(() => { contextValid = false; });
+    if (!chrome.runtime?.id) { contextValid = false; return; }
+    chrome.runtime.sendMessage(msg).catch((err) => {
+      // Only kill the channel if the extension was actually reloaded/uninstalled.
+      // Transient "Receiving end does not exist" while the MV3 service worker
+      // is waking up is recoverable — drop this one event and keep listening.
+      const m = err?.message || "";
+      if (m.includes("Extension context invalidated")) contextValid = false;
+    });
   } catch (e) {
-    contextValid = false;
+    if ((e?.message || "").includes("Extension context invalidated")) {
+      contextValid = false;
+    }
   }
 }
 
