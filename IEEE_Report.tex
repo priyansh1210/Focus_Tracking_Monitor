@@ -1,0 +1,409 @@
+\documentclass[conference]{IEEEtran}
+
+\usepackage{cite}
+\usepackage{amsmath,amssymb,amsfonts}
+\usepackage{graphicx}
+\usepackage{textcomp}
+\usepackage{booktabs}
+\usepackage{multirow}
+\usepackage{array}
+\usepackage{hyperref}
+\usepackage{float}
+\usepackage{xcolor}
+\usepackage{tabularx}
+\usepackage{enumitem}
+
+\hypersetup{
+    colorlinks=true,
+    linkcolor=black,
+    citecolor=black,
+    urlcolor=blue
+}
+
+\begin{document}
+
+\title{Student Focus Monitor: Real-Time Cognitive State Classification and Adaptive Intervention for Online Learning Environments}
+
+\author{
+\IEEEauthorblockN{Priyansh Kabra}
+\IEEEauthorblockA{
+Department of Computer Science and Engineering\\
+\textit{Your University Name Here}\\
+Email: kabrapriyansh12@gmail.com
+}
+}
+
+\maketitle
+
+\begin{abstract}
+Online education platforms currently depend on coarse completion metrics such as video watch percentages and quiz submission rates to estimate student engagement, offering no visibility into the underlying cognitive state of the learner. This paper presents a full-stack intelligent monitoring system that captures fine-grained behavioral telemetry during online learning sessions through a Chrome browser extension, classifies each observation into one of four cognitive states---focused, distracted, confused, or bored---using ensemble and sequential machine learning models, and delivers state-specific adaptive interventions in real time. The system introduces per-student behavioral baseline normalization, a continuous dynamic focus score with temporal decay, progressive model personalization through per-student retraining, and a rule-based adaptive response engine. A synthetic dataset of 40,000 behaviorally grounded observations across 200 simulated students is generated for initial model training, with the architecture designed to incorporate real data as it accumulates. Three classifiers are evaluated: Random Forest (95.84\% accuracy), XGBoost (96.60\% accuracy), and LSTM (91.69\% accuracy), with XGBoost selected as the primary inference model. The platform is deployed with a Streamlit analytics dashboard on the cloud backed by Neon PostgreSQL, enabling remote educator oversight of student engagement patterns.
+\end{abstract}
+
+\begin{IEEEkeywords}
+cognitive state classification, student engagement, online learning analytics, behavioral telemetry, ensemble learning, focus monitoring, adaptive intervention, per-student personalization
+\end{IEEEkeywords}
+
+%==============================================================
+\section{Introduction}
+%==============================================================
+
+The rapid expansion of online education over the past decade has introduced a fundamental observability gap: educators delivering content through digital platforms lack the real-time perceptual feedback that physical classrooms naturally provide. In a face-to-face setting, an instructor can detect glazed eyes, restless fidgeting, or confused expressions and adjust their delivery accordingly. Digital learning environments strip away these cues, leaving educators with only post-hoc metrics---assignment completion timestamps, quiz scores, and total time spent on a page---none of which capture the moment-by-moment cognitive experience of the learner.
+
+This gap has measurable consequences. A student who is confused and repeatedly rewinding a video segment receives no differently timed assistance than one who is proceeding smoothly. A bored student who has already mastered the material continues at the same pace as one who is genuinely engaged. Without cognitive state awareness, the platform treats all learners identically, forfeiting the opportunity for timely, state-appropriate pedagogical responses.
+
+Existing approaches to this problem fall into two broad categories. The first relies on physiological sensors---eye trackers, electroencephalogram (EEG) headbands, galvanic skin response monitors---which provide rich signals but impose hardware requirements that make large-scale deployment impractical. The second category uses coarse digital analytics (login frequency, page dwell time, click counts) that correlate weakly with cognitive engagement and lack the granularity needed for state-level classification.
+
+This work occupies a middle ground. It captures behavioral telemetry that is naturally emitted during browser-based learning---tab switches, mouse movement patterns, click frequency, video interaction behaviors (replays, skips, speed changes), idle periods, pause durations, and away-from-browser intervals---and maps these signals to four cognitive states through trained machine learning models. The system requires no specialized hardware beyond the Chrome browser already used for learning, yet provides substantially richer engagement insight than platform-level analytics.
+
+The contributions of this paper are as follows:
+\begin{enumerate}[leftmargin=*]
+    \item A behavioral telemetry acquisition system implemented as a Chrome Manifest V3 extension that captures eight distinct interaction signals with per-snapshot temporal resolution.
+    \item A dynamic focus score formulation that combines weighted behavioral contributions, per-student baseline normalization, exponential temporal decay, and rolling smoothness to produce a continuous 0--100 engagement metric.
+    \item A feature engineering pipeline that expands 7 raw behavioral signals into 76 classification-ready features through lagged values, rolling statistics, interaction terms, and student-level z-score normalization.
+    \item A comparative evaluation of three classification architectures---Random Forest, XGBoost, and LSTM---on a balanced synthetic dataset of 40,000 observations.
+    \item A progressive personalization mechanism that trains per-student classifiers once sufficient individual data accumulates, with automatic retraining at configurable intervals.
+    \item An end-to-end deployed system integrating data capture, real-time inference, adaptive response, cloud-hosted database, and a seven-page analytics dashboard for educator oversight.
+\end{enumerate}
+
+The remainder of this paper is organized as follows. Section~II reviews related work. Section~III describes the system architecture. Section~IV details the data acquisition approach. Section~V covers dataset construction and validation. Section~VI presents the feature engineering pipeline and focus score formulation. Section~VII describes the classification models and their configurations. Section~VIII presents the per-student personalization mechanism. Section~IX explains the adaptive response engine. Section~X covers the analytics dashboard. Section~XI reports experimental results. Section~XII discusses ethical considerations. Section~XIII concludes with future directions.
+
+%==============================================================
+\section{Related Work}
+%==============================================================
+
+Student engagement detection in digital learning environments has been explored through several modalities. Physiological approaches using EEG signals have demonstrated the ability to distinguish between attentive and inattentive states with accuracies exceeding 85\% in controlled laboratory settings \cite{ref1}. However, these methods require dedicated sensor hardware and constrained environments that do not generalize to at-home online learning scenarios.
+
+Computer vision-based approaches using webcam feeds to analyze facial expressions, head pose, and gaze direction have shown promising results for engagement estimation \cite{ref2}. Whitehill et al.\ demonstrated automated engagement detection from facial features, while Dewan et al.\ surveyed multimodal approaches combining facial and behavioral features \cite{ref3}. These methods raise significant privacy concerns and require consistent camera access, which many learners are reluctant to grant.
+
+Clickstream and interaction log analysis represents the least intrusive category. Baker et al.\ pioneered the detection of off-task behavior using log data from intelligent tutoring systems \cite{ref4}. Subsequent work has applied machine learning to Learning Management System logs to predict at-risk students, though these approaches typically operate at coarse temporal granularities (per-session or per-week) rather than at the per-snapshot level needed for real-time intervention \cite{ref5}.
+
+The approach presented here distinguishes itself from prior work in several respects. First, it operates at the browser level rather than within a specific learning platform, making it platform-agnostic. Second, it differentiates between four cognitive states rather than performing binary engaged/disengaged classification. Third, it introduces per-student behavioral baseline normalization, ensuring that individual behavioral norms---not population averages---drive classification. Fourth, it incorporates temporal sequence analysis through both engineered lagged features and an LSTM architecture, capturing patterns such as confusion buildup (increasing idle time followed by replays) that single-snapshot approaches miss.
+
+%==============================================================
+\section{System Architecture}
+%==============================================================
+
+The system comprises four primary subsystems connected through a REST API layer, as illustrated in Fig.~\ref{fig:architecture}.
+
+\begin{figure}[h]
+\centering
+\setlength{\fboxsep}{8pt}
+\fbox{\parbox{0.9\linewidth}{\small
+\textbf{Chrome Extension} $\rightarrow$ \textbf{Flask Backend} $\rightarrow$ \textbf{ML Inference}\\[4pt]
+\hspace*{1cm}$\downarrow$ \hspace{2.2cm} $\downarrow$ \hspace{2cm} $\downarrow$\\[4pt]
+\textbf{Popup UI} $\leftarrow$ \textbf{Adaptive Engine} $\leftarrow$ \textbf{Dashboard}\\[4pt]
+\hspace*{3cm} $\updownarrow$\\[2pt]
+\hspace*{2cm} \textbf{Database (SQLite/PostgreSQL)}
+}}
+\caption{High-level system architecture showing data flow from behavioral capture through inference to adaptive response and educator analytics.}
+\label{fig:architecture}
+\end{figure}
+
+\textbf{Data Acquisition Layer.} A Chrome Manifest V3 browser extension captures behavioral telemetry through a background service worker and a content script injected into web pages. The service worker manages session state, snapshot scheduling, idle detection, tab-switch counting, and away-time measurement. The content script monitors mouse clicks, mouse movement distance, video playback events (replays, skips, speed changes), and video pause/resume cycles.
+
+\textbf{Backend and Inference Layer.} A Flask server exposes 11 REST API endpoints for student registration, authentication, snapshot ingestion, session management, and data export. Upon receiving each behavioral snapshot, the backend computes the dynamic focus score, executes the primary classifier (XGBoost, or a per-student model if available), updates the student's behavioral baseline, checks retraining eligibility, and returns the classification result within the same request-response cycle.
+
+\textbf{Database Layer.} A dual-mode database adapter auto-selects between SQLite for local development and Neon PostgreSQL for cloud deployment based on the presence of an environment variable. Five relational tables persist the system state: \texttt{snapshots}, \texttt{sessions}, \texttt{student\_baselines}, \texttt{users}, and \texttt{student\_profiles}.
+
+\textbf{Analytics and Visualization Layer.} A Streamlit dashboard provides a password-protected, seven-page analytics interface deployed on Streamlit Community Cloud. It connects to the same cloud database and renders aggregate overviews, per-student deep dives, live monitoring, personal model status, model performance comparisons, and interactive dataset exploration.
+
+%==============================================================
+\section{Data Acquisition}
+%==============================================================
+
+The Chrome extension captures eight behavioral signals organized across two execution contexts. Table~\ref{tab:signals} summarizes each signal, its capture mechanism, and its cognitive relevance.
+
+\begin{table}[h]
+\caption{Behavioral Signals Captured by the Chrome Extension}
+\label{tab:signals}
+\centering
+\small
+\begin{tabular}{@{}p{1.6cm}p{2.8cm}p{2.8cm}@{}}
+\toprule
+\textbf{Signal} & \textbf{Capture Method} & \textbf{Cognitive Relevance} \\
+\midrule
+Tab switches & \texttt{tabs.onActivated}, visibility API & Distraction, multitasking \\
+Idle time & Chrome Idle API + interaction delta & Disengagement, confusion \\
+Paused time & Video \texttt{pause}/\texttt{play} events & Note-taking, processing \\
+Away time & \texttt{windows.onFocusChanged} & Complete departure \\
+Clicks & \texttt{mousedown} listener & Active engagement \\
+Mouse dist. & \texttt{mousemove} accumulation & Sustained attention \\
+Replays & Video \texttt{seeked} (backward) & Comprehension difficulty \\
+Skips & Video \texttt{seeked} (forward) & Boredom, familiarity \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+The background service worker maintains a cumulative session object between snapshot intervals. When the browser window loses operating system focus, the worker records a departure timestamp and increments the tab-switch counter. Upon focus return, it closes the away-time interval and resets the idle clock so that time spent in external applications does not inflate the idle measurement.
+
+The content script employs a resilient message-passing implementation that tolerates transient Manifest V3 service worker restarts. When the service worker briefly suspends and restarts (a characteristic behavior of Manifest V3's event-driven architecture), the content script catches the transient communication error and continues capturing events rather than permanently invalidating the communication channel. Context invalidation occurs only when the extension is genuinely uninstalled or reloaded.
+
+Behavioral data is aggregated into snapshots at configurable intervals and transmitted to the backend through the \texttt{/api/snapshot} endpoint as JSON payloads.
+
+%==============================================================
+\section{Dataset Construction and Validation}
+%==============================================================
+
+\subsection{Synthetic Data Generation}
+
+The classification models require labeled training data mapping behavioral feature vectors to cognitive state labels. Since obtaining ground-truth cognitive state annotations at scale would require concurrent think-aloud protocols or expert observation for each learning session---a prohibitively expensive process---we generate a synthetic dataset using behaviorally grounded generative rules.
+
+The dataset generator creates 40,000 observations distributed equally across four classes (10,000 per class: focused, distracted, confused, bored) involving 200 simulated students across approximately 4,500 sessions. Each synthetic student is assigned a unique behavioral baseline profile containing nine personalization parameters: base click rate, base mouse activity level, tab-switching tendency, replay tendency, skip tolerance, idle baseline, preferred playback speed, focus state persistence probability, and active time-of-day preference.
+
+For each observation, the generator samples behavioral features from state-specific distributions modulated by the student's personal profile. The state-specific distributions are designed to reflect established behavioral correlates of each cognitive condition:
+
+\begin{itemize}[leftmargin=*]
+    \item \textbf{Focused:} Low tab-switch frequency (0.3$\times$ student tendency), low idle time (0.5$\times$ baseline), elevated click and mouse activity (1.2--1.3$\times$ baseline), minimal replays and skips, playback speed near 1.0.
+    \item \textbf{Distracted:} High tab-switch frequency (3.0$\times$ tendency), moderate idle time, reduced click activity (0.4$\times$), reduced mouse movement (0.5$\times$), moderate skips.
+    \item \textbf{Confused:} Moderate tab switching, high idle time (2.5$\times$ baseline), low click activity, high replay counts (2.5$\times$ tendency), low skips, reduced playback speed.
+    \item \textbf{Bored:} Moderate tab switching, elevated idle time, low click activity, low replays, high skip counts (2.5$\times$ tolerance), elevated playback speed.
+\end{itemize}
+
+Temporal coherence is enforced within sessions through a state persistence mechanism: each subsequent snapshot has a probability (0.6--0.9, per student profile) of retaining the previous cognitive state, with state transitions following behaviorally plausible patterns.
+
+\subsection{Dataset Validation}
+
+The generated dataset undergoes a six-point statistical validation suite:
+\begin{enumerate}[leftmargin=*]
+    \item \textbf{Completeness:} Verification that no missing values exist in any column across all 40,000 rows.
+    \item \textbf{Range validity:} Confirmation that all behavioral features fall within physically plausible ranges defined in the configuration (e.g., tab switches $\in [0, 20]$, idle time $\in [0, 300]$~seconds).
+    \item \textbf{Class balance:} Verification of exact 10,000-row-per-class distribution.
+    \item \textbf{Temporal coherence:} Confirmation that snapshot indices within each session form monotonically increasing sequences.
+    \item \textbf{Per-student consistency:} Verification that each student's behavioral distributions reflect their assigned baseline profiles.
+    \item \textbf{Feature discriminability:} One-way ANOVA testing confirms that all seven behavioral features exhibit statistically significant differences across the four cognitive state classes ($p < 0.05$ for every feature).
+\end{enumerate}
+
+%==============================================================
+\section{Feature Engineering and Focus Score}
+%==============================================================
+
+\subsection{Feature Engineering Pipeline}
+
+The raw dataset contains 7 behavioral features per snapshot. The feature engineering module transforms these into 76 classification-ready features through five categories of transformations:
+
+\textbf{Lagged Features (30 features).} For each of the 6 core behavioral signals (tab switches, idle time, clicks, mouse movement, replays, skips), the values from the preceding 5 snapshots within the same session are captured. These features enable tree-based models to detect within-session temporal trends such as gradually increasing idle time.
+
+\textbf{Rolling Statistics (18 features).} A 3-snapshot sliding window computes mean, standard deviation, and maximum for each of the 6 core signals, capturing short-horizon behavioral volatility.
+
+\textbf{Delta Features (6 features).} First-order differences of each core signal between consecutive snapshots within a session, capturing the rate of behavioral change (acceleration or deceleration in engagement patterns).
+
+\textbf{Interaction Features (5 features).} Cross-signal products designed to amplify cognitively meaningful behavioral combinations:
+\begin{itemize}[leftmargin=*]
+    \item Confusion signal: idle\_time $\times$ replay\_count
+    \item Boredom signal: idle\_time $\times$ skip\_count $\times$ max(0, speed $-$ 1.0)
+    \item Distraction signal: tab\_switch $\times$ (1 / (clicks + 1))
+    \item Engagement signal: clicks $\times$ mouse\_movement / 1000
+    \item Activity ratio: (clicks + mouse/100) / (idle + tab\_switch + 1)
+\end{itemize}
+
+\textbf{Per-Student Deviation Features (7 features).} Z-score normalization of each behavioral signal and the focus score against the individual student's historical mean and standard deviation. These features quantify how atypical the current observation is relative to that specific student's established patterns.
+
+Additionally, session position features (normalized progress within session, discrete session phase) provide contextual information about whether the observation occurs at the beginning, middle, or end of a study session.
+
+\subsection{Dynamic Focus Score}
+
+The focus score produces a continuous 0--100 engagement metric for each snapshot. The computation proceeds through five stages:
+
+\begin{enumerate}[leftmargin=*]
+    \item \textbf{Base initialization} at 70 (neutral engagement).
+    \item \textbf{Weighted signal contribution:} Each behavioral signal modifies the base score according to configured weights: tab switches ($-3.0$/switch), idle time ($-0.15$/second), clicks ($+0.3$/click), mouse movement ($+0.005$/pixel), replays ($-1.5$/replay), skips ($-2.5$/skip), and playback speed deviation from 1.0 ($-10.0$/unit).
+    \item \textbf{Baseline normalization:} When a student baseline exists, signals are expressed as deviations from the personal mean before weight application.
+    \item \textbf{Temporal decay:} Within a session, older snapshot contributions decay by a factor of $\alpha = 0.85$ per interval, giving greater weight to recent behavior.
+    \item \textbf{Smoothing and clamping:} A 3-snapshot rolling average stabilizes the score, which is then clamped to $[0, 100]$.
+\end{enumerate}
+
+The focus score formula for snapshot $t$ is:
+\begin{equation}
+    S_t = \text{clamp}\left(\frac{1}{W}\sum_{i=0}^{W-1} \alpha^i \cdot f(t-i)\right, 0, 100)
+\end{equation}
+where $f(t)$ is the raw weighted score at time $t$, $\alpha = 0.85$ is the decay factor, and $W = 3$ is the smoothing window.
+
+%==============================================================
+\section{Classification Models}
+%==============================================================
+
+Three classification architectures are trained and evaluated on the engineered dataset using an 80/20 stratified train-test split with 5-fold stratified cross-validation.
+
+\subsection{Random Forest}
+
+A Random Forest ensemble of 200 decision trees is configured with maximum depth 20, minimum samples per split 5, minimum samples per leaf 2, and balanced class weighting. The model is trained on the full 76-feature engineered dataset. Feature importance is extracted using the mean decrease in impurity criterion, with tab-switch lagged features and confusion/distraction interaction signals ranking among the most discriminative features.
+
+\subsection{XGBoost}
+
+An XGBoost gradient-boosted ensemble of 200 trees is configured with maximum depth 8, learning rate 0.1, row subsampling ratio 0.8, and column subsampling ratio 0.8 per tree. The multi-class softmax probability objective is used with four output classes. This model achieves the highest accuracy among the three architectures and is selected as the primary real-time inference model deployed in the backend.
+
+\subsection{LSTM}
+
+A Long Short-Term Memory recurrent network processes sequences of 5 consecutive snapshots, with each snapshot represented by 8 features (7 raw behavioral signals plus the focus score). The network consists of an LSTM layer with 128 hidden units (dropout 0.3, recurrent dropout 0.2), a 64-unit dense layer with ReLU activation, and a 4-unit softmax output layer. Training uses the Adam optimizer (learning rate 0.001) with early stopping (patience 5 epochs) on a 20\% validation split, for a maximum of 50 epochs with batch size 64.
+
+The LSTM operates on raw temporal sequences without engineered features, relying on its recurrent architecture to learn temporal dependencies directly from the ordered behavioral data. While it does not match the tree-based models in overall accuracy, it captures sequential patterns (e.g., progressive confusion buildup across consecutive snapshots) that are complementary to the feature-engineered approach.
+
+%==============================================================
+\section{Per-Student Model Personalization}
+%==============================================================
+
+The global classifiers are trained on the full population of synthetic students. However, individual students may exhibit behavioral patterns that deviate substantially from population norms---a student who habitually switches tabs at high frequency may appear distracted to a population-trained model even when genuinely focused. To address this, the system implements a progressive personalization pipeline:
+
+\textbf{Trigger Conditions.} A per-student model is trained only after the student has accumulated at least 300 snapshots spanning at least 3 distinct cognitive state classes with a minimum of 15 observations per represented class. These thresholds ensure sufficient data volume and class diversity for a stable classifier.
+
+\textbf{Feature Construction.} The personal model's feature matrix is built from the student's own snapshot history. Raw behavioral features are augmented with rolling statistics and z-score deviations computed against that individual student's data distribution, rather than the population distribution used by the global model.
+
+\textbf{Training and Persistence.} A dedicated Random Forest classifier is trained on the student's personal data and serialized to disk (\texttt{models\_saved/students/\{student\_id\}.joblib}). The inference pipeline checks for the existence of a personal model file before each prediction and uses it in preference to the global classifier when available.
+
+\textbf{Incremental Retraining.} After the initial 300-snapshot training, the model is retrained every 50 new snapshots to incorporate evolving behavioral patterns and new state observations.
+
+\textbf{Fallback Mechanism.} If the personal model does not exist, or if the student's accumulated data lacks sufficient class diversity (fewer than 3 classes represented), the system falls back to the global XGBoost classifier seamlessly.
+
+%==============================================================
+\section{Adaptive Response Engine}
+%==============================================================
+
+The adaptive response module translates cognitive state classifications and focus scores into pedagogical actions. It operates as a rule-based intervention engine with configurable thresholds:
+
+\begin{table}[h]
+\caption{Adaptive Intervention Mapping}
+\label{tab:interventions}
+\centering
+\small
+\begin{tabular}{@{}p{1.5cm}p{2.5cm}p{3.2cm}@{}}
+\toprule
+\textbf{Condition} & \textbf{Trigger Criteria} & \textbf{Intervention} \\
+\midrule
+Confused & Score $< 40$, replays $> 3$ & Display contextual hint \\
+Bored & Score $< 35$, skips $> 3$ & Suggest advanced material \\
+Distracted & Score $< 30$, tab switches $> 5$ & Send refocus notification \\
+Critical & Score $< 20$ (any state) & Alert instructor directly \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+The engine maintains a rolling buffer of the 10 most recent state observations per student. Pattern detection logic identifies sustained negative trends---such as three consecutive distracted classifications or a monotonically decreasing focus score over five snapshots---that warrant escalated intervention even when individual snapshots fall marginally above their respective thresholds. Interventions are prioritized by severity (critical $>$ distracted $>$ bored $>$ confused) so that the most urgent response takes precedence when multiple conditions are simultaneously satisfied.
+
+%==============================================================
+\section{Analytics Dashboard}
+%==============================================================
+
+The Streamlit-based analytics dashboard provides educators with a comprehensive, password-protected monitoring interface comprising seven functional pages:
+
+\begin{enumerate}[leftmargin=*]
+    \item \textbf{Overview:} Aggregate statistics including total enrolled students, cumulative snapshot count, population-wide average focus score, most prevalent cognitive state, and summed behavioral time breakdowns (paused, away, idle). Visualizations include a focus score distribution histogram and a cognitive state proportion pie chart.
+
+    \item \textbf{All Students:} A sortable roster displaying each student's mean focus score, snapshot count, dominant state, detected learning style, and average behavioral metrics per snapshot (idle, paused, away time). Each entry includes a miniature progress bar reflecting current engagement.
+
+    \item \textbf{Student Deep Dive:} Detailed per-student analytics including a focus score time series, state transition timeline, behavioral radar chart comparing the individual's profile to the population mean across all eight signals, session-by-session breakdowns, and learning style characterization.
+
+    \item \textbf{Live Monitor:} An auto-refreshing display of currently active students with their latest focus scores, predicted cognitive states, and real-time behavioral readings from the most recent snapshot. Focus score sparklines visualize short-term engagement trajectories.
+
+    \item \textbf{Personal Models:} Training status for per-student models---which students have been personalized, their sample counts, class distributions, and how the personal model's cross-validation accuracy compares to the global classifier's accuracy on the same student's data.
+
+    \item \textbf{Model Performance:} Side-by-side comparison of all three global classifiers including accuracy, weighted F1 scores, per-class precision and recall, confusion matrix visualizations, receiver operating characteristic curves, and feature importance rankings.
+
+    \item \textbf{Dataset Explorer:} Interactive exploration of the training dataset with descriptive statistics, correlation heatmaps across all behavioral features (including paused and away time), and filterable data tables.
+\end{enumerate}
+
+The dashboard connects to the same Neon PostgreSQL instance used by the backend, ensuring that educators view the same data that drives real-time classification decisions.
+
+%==============================================================
+\section{Experimental Results}
+%==============================================================
+
+\subsection{Classification Performance}
+
+Table~\ref{tab:results} summarizes the performance of each classifier on the held-out test set (8,000 observations, 2,000 per class).
+
+\begin{table}[h]
+\caption{Classification Performance Comparison}
+\label{tab:results}
+\centering
+\begin{tabular}{@{}lccc@{}}
+\toprule
+\textbf{Model} & \textbf{Accuracy} & \textbf{F1 (Weighted)} & \textbf{CV Accuracy} \\
+\midrule
+Random Forest & 95.84\% & 0.9584 & 95.72\% \\
+\textbf{XGBoost} & \textbf{96.60\%} & \textbf{0.9660} & \textbf{96.61\%} \\
+LSTM & 91.69\% & 0.9166 & --- \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsection{Per-Class Analysis}
+
+Table~\ref{tab:perclass} presents the per-class F1 scores for each model, revealing that all three architectures achieve their highest discrimination on the \textit{focused} and \textit{confused} classes and their lowest on the \textit{distracted} class.
+
+\begin{table}[h]
+\caption{Per-Class F1 Scores}
+\label{tab:perclass}
+\centering
+\begin{tabular}{@{}lcccc@{}}
+\toprule
+\textbf{Model} & \textbf{Focused} & \textbf{Confused} & \textbf{Bored} & \textbf{Distracted} \\
+\midrule
+Random Forest & 0.983 & 0.983 & 0.940 & 0.927 \\
+XGBoost & 0.988 & 0.988 & 0.949 & 0.938 \\
+LSTM & 0.981 & 0.959 & 0.879 & 0.847 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+The consistently lower performance on the \textit{distracted} class across all models can be attributed to the behavioral overlap between distraction and boredom: both states involve reduced click activity and elevated idle time, with the distinguishing factor being primarily the tab-switch frequency and skip behavior---signals that can co-occur in either state.
+
+The \textit{focused} and \textit{confused} classes are most clearly separable because they exhibit strongly divergent behavioral signatures: focused students show high mouse activity with minimal replays, while confused students show high replay counts with low mouse movement and extended idle periods.
+
+\subsection{Cross-Validation Stability}
+
+The Random Forest and XGBoost models demonstrate high cross-validation stability with standard deviations of 0.0017 and 0.002, respectively, across 5 stratified folds. This indicates that the models are not overfitting to particular data splits and that the engineered features provide consistent discriminative power across different subsets of the student population.
+
+\subsection{Tree-Based vs.\ Sequential Architecture}
+
+The LSTM's lower accuracy (91.69\% vs.\ 96.60\% for XGBoost) is attributable to two factors. First, it operates on only 8 raw features per timestep, while the tree-based models benefit from 76 engineered features that encode temporal patterns explicitly through lagged values and rolling statistics. Second, the fixed sequence length of 5 snapshots limits the temporal horizon the LSTM can observe, whereas the 5-step lagged features available to tree models capture the same window without the architectural constraint of processing them recurrently.
+
+Despite the accuracy gap, the LSTM architecture remains valuable as a complementary model because it processes raw temporal sequences without requiring manual feature engineering---an advantage when the system encounters behavioral patterns not anticipated during feature design.
+
+%==============================================================
+\section{Ethical Considerations}
+%==============================================================
+
+The system is designed with several privacy-preserving principles:
+
+\begin{itemize}[leftmargin=*]
+    \item \textbf{No browsing history recording.} The extension captures aggregate behavioral counts (e.g., ``5 tab switches'') but never records which external websites or pages the student visited.
+    \item \textbf{Consent-based activation.} Students manually initiate and terminate each monitoring session. No background tracking occurs without explicit action.
+    \item \textbf{Student-facing transparency.} Students view their own real-time focus scores and behavioral breakdowns through the extension popup, ensuring the monitoring process is visible and comprehensible.
+    \item \textbf{Data minimization.} Only behavioral signal counts and derived metrics are stored. No keystroke content, screen recordings, webcam feeds, or personally identifiable information beyond the self-chosen student identifier is captured.
+    \item \textbf{Local-first storage.} The default configuration persists all data locally in SQLite. Cloud database connectivity is optional and requires explicit configuration by the deploying institution.
+\end{itemize}
+
+%==============================================================
+\section{Conclusion and Future Work}
+%==============================================================
+
+This paper presented an end-to-end student focus monitoring system that bridges the observability gap in online learning environments. By capturing eight behavioral signals through a lightweight browser extension and mapping them to four cognitive states through ensemble and sequential classifiers, the system provides educators with real-time visibility into the engagement quality of their students---not merely whether they are present, but \textit{how} they are cognitively processing the learning material.
+
+The XGBoost classifier achieved the highest accuracy of 96.60\% with a weighted F1 score of 0.9660, demonstrating that browser-level behavioral telemetry provides sufficient discriminative information for reliable four-class cognitive state classification. The per-student personalization mechanism ensures that classification adapts to individual behavioral norms over time, and the adaptive response engine translates classifications into actionable pedagogical interventions.
+
+Several directions merit future investigation. First, the incorporation of webcam-based gaze tracking as an additional input modality could improve discrimination between the \textit{distracted} and \textit{bored} states, which currently exhibit the highest behavioral overlap. Second, a reinforcement learning approach to intervention selection---optimizing not just which intervention to deliver but when to deliver it based on observed student responses to past interventions---could replace the current rule-based engine. Third, integration with institutional Learning Management Systems (Moodle, Canvas) would enable correlation of real-time cognitive state classifications with longer-term academic outcomes such as assignment grades and course completion rates. Fourth, an online model retraining pipeline that continuously updates the global classifier as real student data accumulates would progressively reduce the system's dependence on synthetic pre-training data. Finally, extending the data capture layer to mobile learning platforms through a companion application would broaden the system's applicability to tablet-based educational contexts.
+
+%==============================================================
+% References
+%==============================================================
+
+\begin{thebibliography}{00}
+
+\bibitem{ref1}
+Y. Wang, Z. Wang, and S. Cheng, ``Attention-level evaluation based on EEG signals for learning environments,'' \textit{IEEE Access}, vol. 7, pp. 145847--145858, 2019.
+
+\bibitem{ref2}
+J. Whitehill, Z. Serpell, Y.-C. Lin, A. Foster, and J. R. Movellan, ``The faces of engagement: Automatic recognition of student engagement from facial expressions,'' \textit{IEEE Transactions on Affective Computing}, vol. 5, no. 1, pp. 86--98, 2014.
+
+\bibitem{ref3}
+M. A. A. Dewan, M. Murshed, and F. Lin, ``Engagement detection in online learning: A review,'' \textit{Smart Learning Environments}, vol. 6, no. 1, pp. 1--20, 2019.
+
+\bibitem{ref4}
+R. S. Baker, A. T. Corbett, K. R. Koedinger, and A. Z. Wagner, ``Off-task behavior in the cognitive tutor classroom: When students `game the system,'\,'' in \textit{Proc. SIGCHI Conference on Human Factors in Computing Systems}, pp. 383--390, 2004.
+
+\bibitem{ref5}
+C. Romero and S. Ventura, ``Educational data mining and learning analytics: An updated survey,'' \textit{WIREs Data Mining and Knowledge Discovery}, vol. 10, no. 3, e1355, 2020.
+
+\end{thebibliography}
+
+\end{document}
